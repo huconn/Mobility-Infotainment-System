@@ -189,20 +189,16 @@ def send_udp_message(dest_ip_addr, dest_port, source_id, dest_id, service_id, me
 
 
 # Set UDP Sender
-def udp_sender(dest_ip_addr, dest_port):
+def udp_sender(dest_ip_addr, dest_port, source_id, dest_id, service_id):
     print(f"UDP client sending to {dest_ip_addr}:{dest_port}")
 
     while True:
         state = read_switch_state(SWITCH_PIN)
         print(f"GPIO State: {state}")
 
-        if state == "HIGH":
-            #send_udp_message(dest_ip_addr, dest_port, source_id, dest_id, service_id, message_type, b"P-IVI Control Request through UDP")
-            print("Message sent through UDP due to GPIO being HIGH.")
-            sleep(10)
-        elif state == "LOW":
-            print("D-IVI : GPIO is LOW. Continuously checking...")
-            sleep(1) 
+        # "LOW" means the switch is pressed
+        if state == 0 :
+            send_udp_message(dest_ip_addr, dest_port, source_id, dest_id, service_id, MESSAGE_TYPES['P-IVI Control Request'], b"P-IVI Control Request through UDP")
         sleep(1)
 
 # Set UDP Receiver
@@ -259,18 +255,18 @@ def send_tcp_message(dest_ip_addr, dest_port, source_id, dest_id, service_id, me
     tcp_sock.close()
 
 # Set TCP Sender
-def tcp_sender(dest_ip_addr, dest_port):
+def tcp_sender(dest_ip_addr, dest_port, source_id, dest_id, service_id):
     print(f"TCP client sending to {dest_ip_addr}:{dest_port}")
 
     while True:
-        state = check_gpio_state()
-        if state == "HIGH":
-            send_tcp_message(dest_ip_addr, dest_port, source_id, dest_id, service_id, message_type, b"P-IVI Control Request through TCP")
-            print("Message sent through UDP due to GPIO being HIGH.")
-            sleep(10)
-        elif state == "LOW":
-            print("P-IVI1 : GPIO is LOW. Continuously checking...")
-            sleep(10) 
+        state = read_switch_state(SWITCH_PIN)
+        print(f"GPIO State: {state}")
+        
+        # "LOW" means the switch is pressed
+        if state == 0 :
+            send_tcp_message(dest_ip_addr, dest_port, source_id, dest_id, service_id, MESSAGE_TYPES['P-IVI Control Request'], b"P-IVI Control Request through TCP")
+
+        sleep(1) 
 
 # Set TCP Server
 def tcp_server(host, port):
@@ -339,7 +335,7 @@ def main(args):
         # Initiate UDP Receiver Thread
         udp_receiver_thread = threading.Thread(target=udp_receiver, args=(source_ip_addr, udp_port))
         # Initiate UDP Sender Thread
-        udp_sender_thread = threading.Thread(target=udp_sender, args=(source_ip_addr, udp_port))
+        udp_sender_thread = threading.Thread(target=udp_sender, args=(dest_ip_addr, udp_port, source_id, dest_id, service_id))
         udp_receiver_thread.start()
         udp_sender_thread.start()
 
@@ -349,7 +345,7 @@ def main(args):
         # Initiate TCP Receiver Thread
         tcp_server_thread = threading.Thread(target=tcp_server, args=(source_ip_addr, tcp_port))
         # Initiate TCP Sender Thread
-        tcp_sender_thread = threading.Thread(target=tcp_sender, args=(source_ip_addr, tcp_port))
+        tcp_sender_thread = threading.Thread(target=tcp_sender, args=(dest_ip_addr, tcp_port, source_id, dest_id, service_id))
         tcp_server_thread.start()
         tcp_sender_thread.start()
 

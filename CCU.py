@@ -88,7 +88,7 @@ SOURCE_DEST_IDS = {
 udp_client_ip = None
 tcp_client_ip = None
 
-def log_message(protocol, direction, data, output_to_console=True, output_to_file=True):
+def log_message(protocol, direction, data, output_to_console=True, output_to_file=False):
     timestamp = time.strftime('%Y-%m-%d_%H-%M-%S')  
     message = f"[{timestamp}] {direction.upper()} {protocol} : {data}"
 
