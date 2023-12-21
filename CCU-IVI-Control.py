@@ -114,7 +114,7 @@ def log_message(debug, protocol, direction, data, output_to_console=True, output
         '''
 
 def handle_error(error_msg):
-    log_message("", "error", f"Error: {error_msg}")
+    log_message("ERROR", "", "error", f"Error: {error_msg}")
 
 def get_default_interface():
     routes = netifaces.gateways()
@@ -270,4 +270,4 @@ if __name__ == "__main__":
     args = parser.parse_args()
     main(args)
 
-#python3 CCU.py --ip_addr=192.168.8.121
+# python3 CCU-IVI-Control.py  --divi_ip_addr='192.168.8.194' --pivi_ip_addr='192.168.8.121'
