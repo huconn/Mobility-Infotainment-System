@@ -250,6 +250,20 @@ def tcp_sender(dest_ip_addr, dest_port, source_id, dest_id, service_id):
             print(f"Error reading GPIO state: {e}")
             sleep(1)  # Wait for a bit before retrying)
 
+def tcp_test_sender(dest_ip_addr, dest_port, source_id, dest_id, service_id, test_sending):
+    log_message("INFO", "TCP", "SEND", f"Send {test_sending} times at 1-second intervals {dest_ip_addr}:{dest_port}")
+
+    count = 0  # Initialize the counter
+    while count < test_sending:
+        try:
+            send_tcp_message(dest_ip_addr, dest_port, source_id, dest_id, service_id, MESSAGE_TYPES['P-IVI Control Request'], b"P-IVI Control Request through TCP")
+            log_message("INFO", "TCP", "SEND", f"Send {count} times {dest_ip_addr}:{dest_port}")
+            sleep(1)
+        except Exception as e:
+            print(f"Error reading GPIO state: {e}")
+            sleep(1)
+        count += 1
+        
 # Set TCP Server
 def tcp_server(host, port, dest_port):
     try:
@@ -302,7 +316,9 @@ def tcp_server(host, port, dest_port):
 
 def main(args):
     global debug_level
-    debug_level = args.debug_level        
+
+    debug_level = args.debug_level   
+    test_sending = args.test_sending     
     source_ip_addr = args.src_ip_addr
     dest_ip_addr = args.dest_ip_addr
     src_port = args.src_port
@@ -317,6 +333,7 @@ def main(args):
         print(f"Default Interface: {default_interface}")
         source_ip_addr = get_interface_ip(default_interface)
     
+    log_message("INFO", "UDP", "", f"Test Sending: {test_sending}")
     log_message("INFO", "TCP", "", f"Debug level: {debug_level}")
     log_message("INFO", "TCP", "", f"Source IP Address: {source_ip_addr}")
     log_message("INFO", "TCP", "", f"Destination IP Address: {dest_ip_addr}")
@@ -345,6 +362,10 @@ def main(args):
         tcp_sender_thread = threading.Thread(target=tcp_sender, args=(dest_ip_addr, dest_port, source_id, dest_id, service_id))
         tcp_sender_thread.start()
 
+    if test_sending > 0:
+        test_tcp_sender_thread = threading.Thread(target=tcp_test_sender, args=(dest_ip_addr, dest_port, source_id, dest_id, service_id, test_sending))
+        test_tcp_sender_thread.start()
+
 if __name__ == "__main__":
     try:
         # Setup GPIO
@@ -362,7 +383,7 @@ if __name__ == "__main__":
         parser.add_argument('--message_type', default='None', choices=MESSAGE_TYPES.keys(), help='Message Type')
         parser.add_argument('--data', help='Payload Data')
         parser.add_argument('--debug_level', default='INFO', choices=DEBUG_LEVELS.keys(), help='Debug level (DEBUG, INFO, WARNING, ERROR, CRITICAL)')
-        
+        parser.add_argument('--test_sending', type=int, default=0, help='Test sending UDP message')
         args = parser.parse_args()
         main(args)
 
@@ -374,3 +395,4 @@ if __name__ == "__main__":
 
 # TCP <-> TCP
 # python3 P-IVI.py --dest_ip_addr='192.168.8.196'
+# python3 P-IVI.py --dest_ip_addr='192.168.8.196' --test_sending=10
