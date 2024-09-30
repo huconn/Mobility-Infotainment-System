@@ -1,0 +1,42 @@
+.DS_Store
+node_modules
+/dist
+
+# local env files
+.env.local
+.env.*.local
+
+# Ignore lock files (if you don’t want to commit them, though generally it's okay to commit them)
+package-lock.json
+yarn.lock
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Editor directories and files
+.idea
+.vscode
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Ignore temporary or backup files
+*.swp
+*.tmp
+*.bak
+*.old
+
+# Ignore VSCode specific settings and extensions (if you don't want to share them with others)
+.vscode/
+
+# Ignore Babel, ESLint, or other build tool cache
+.cache/
+.idea/
+
+# Ignore any specific test or generated files
+*.log
