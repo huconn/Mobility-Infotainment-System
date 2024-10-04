@@ -5,15 +5,50 @@ from datetime import datetime, timedelta
 import socket
 import argparse
 import json
+from logger import Logger 
+from packet import *
+
+# UDP transmission settings
+CCU_IP_ADDR = '192.168.10.103'  #'127.0.0.1'
+CCU_PORT = 5001
+DIVI_IP_ADDR = '127.0.0.1'
+DIVI_PORT = 5002
+PIVI1_IP_ADDR = '127.0.0.1'
+PIVI1_PORT = 5003
+PIVI2_IP_ADDR = '127.0.0.1'
+PIVI2_PORT = 5004
+PIVI3_IP_ADDR = '127.0.0.1'
+PIVI3_PORT = 5005
+CLOUDE_IP_ADDR = '127.0.0.1'
+CLOUDE_PORT = 5006
+
+LTE_IP_ADDR = '127.0.0.1'
+LTE_PORT = 5012
+CAN_IP_ADDR = '127.0.0.1'
+CAN_PORT = 5013
+WAVE_IP_ADDR = '127.0.0.1'
+WAVE_PORT = 5014
 
 # Serial port configuration
-ser = serial.Serial('/dev/ttyUSB2', 115200, timeout=1)
+def setup_serial():
+    try:
+        ser = serial.Serial('/dev/ttyUSB2', 115200, timeout=1)
+        return ser
+    except serial.SerialException as e:
+        print(f"Serial port error: {e}")
+        return None
 
 # Create UDP socket
-sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+def setup_socket():
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        return sock
+    except socket.error as e:
+        print(f"Socket error: {e}")
+        return None
 
 # Function to send AT command and read response
-def send_at_command(command):
+def send_at_command(ser, command):
     ser.write((command + '\r\n').encode())
     time.sleep(1)
     response = ''
@@ -22,7 +57,7 @@ def send_at_command(command):
     return response.strip()
 
 # GPS initial setup
-def setup_gps():
+def setup_gps(ser):
     commands = [
         'AT+QGPS=1',
         'AT+QGPS?',
@@ -30,16 +65,16 @@ def setup_gps():
         'AT+QGPSCFG="gpsnmeatype",1'
     ]
     for cmd in commands:
-        response = send_at_command(cmd)
+        response = send_at_command(ser, cmd)
         print(f"Command: {cmd}\nResponse: {response}\n")
 
 # Get GPS location information
-def get_gps_location():
-    response = send_at_command('AT+QGPSLOC?')
+def get_gps_location(ser):
+    response = send_at_command(ser, 'AT+QGPSLOC?')
     return response
 
 # Send data to server
-def send_to_server(data, server_ip, server_port):
+def send_to_server(sock, data, server_ip, server_port):
     try:
         message = str(data)
         sock.sendto(message.encode(), (server_ip, server_port))
@@ -98,22 +133,55 @@ def parse_gps_data(gps_data):
 
 def parse_arguments():
     parser = argparse.ArgumentParser(description="GPS Data Sender")
-    parser.add_argument('--server', type=str, default='localhost', 
-                        help="Server IP address (default: localhost)")
-    parser.add_argument('--port', type=int, default=5001, help="Server port (default: 5001)")
+    parser.add_argument('--server', type=str, default=CCU_IP_ADDR, 
+                        help="Server IP address (default: {CCU_IP_ADDR})")
+    parser.add_argument('--port', type=int, default=CCU_PORT, help="Server port (default: {CCU_PORT})")
     parser.add_argument('--interval', type=int, default=30, help="Sending interval in seconds (default: 30)")
     return parser.parse_args()
 
 def main(server_ip, server_port, interval):
-    setup_gps()
+    ser = setup_serial()
+    if ser is None:
+        print("Serial port not available, exiting program.")
+        return
+
+    sock = setup_socket()
+    if sock is None:
+        print("Socket not available, exiting program.")
+        ser.close()
+        return
+
+    setup_gps(ser)
     
     try:
         while True:
-            gps_data = get_gps_location()
+            gps_data = get_gps_location(ser)
             parsed_data = parse_gps_data(gps_data)
             print(parsed_data)
             
-            send_to_server(parsed_data, server_ip, server_port)
+            # Convert to JSON string and encode to bytes
+            json_message = json.dumps(parsed_data).encode('utf-8')
+            data_length = len(json_message)
+
+            # Pack the header fields into a byte sequence
+            header = struct.pack(
+                '>BBHHHHH',                             # Format: Big-endian, 2x 1-byte, 5x 2-byte
+                SourceDestID.CAN.value,                 # 1 byte (source_id)
+                SourceDestID.LTE.value,                 # 1 byte (destination_id)
+                ServiceID.VEHICLE_INFORMATION.value,    # 2 bytes (service_id)
+                VEHICLE_MESSAGE_TYPES.LAST_VEHICLE_INFORMATION.value,  # 2 bytes (message_type)
+                0x0011,                                 # 2 bytes (ift_id)
+                0x0001,                                 # 2 bytes (ift_type)
+                data_length                             # 2 bytes (data_length)
+            )
+
+            # Combine the header and the JSON message (both in bytes)
+            full_message = header + json_message
+
+            print(f"Sending Full message: {full_message}")
+
+
+            send_to_server(sock, full_message, server_ip, server_port)
             
             time.sleep(interval)
     except KeyboardInterrupt:
@@ -125,4 +193,5 @@ def main(server_ip, server_port, interval):
 
 if __name__ == "__main__":
     args = parse_arguments()
+    print(f"Server IP: {args.server}, Port: {args.port}, Interval: {args.interval}")
     main(args.server, args.port, args.interval)

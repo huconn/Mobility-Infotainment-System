@@ -1,3 +1,5 @@
+# MIS_RTMC.py: RTMC (Real-Time Monitoring Client) for MIS (Monitoring Information System)
+
 import socket
 import time
 import random
@@ -33,12 +35,53 @@ class UDPClient:
         print("Complete the all message sending")
         self.sock.close()
 
+class TCPClient:
+    def __init__(self, server_host='localhost', server_port=12345, message_size=64, count_input=1, delay_ms=1000):
+        self.server_host = server_host
+        self.server_port = server_port
+        self.message_size = message_size
+        self.count = count_input
+        self.delay_ms = delay_ms
+        self.sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
+    def start(self):
+        try:
+            self.sock.connect((self.server_host, self.server_port))
+            print(f"{self.server_host}:{self.server_port}의 서버에 TCP 연결")
+            self.send_messages()
+        except Exception as e:
+            print(f"TCP 연결 실패: {str(e)}")
+            self.sock.close()
+
+    def generate_random_message(self, size):
+        return ''.join(random.choices(string.ascii_letters + string.digits, k=size))
+
+    def send_messages(self):
+        for i in range(self.count):
+            try:
+                message_to_send = self.generate_random_message(self.message_size)
+                message_info = f"Message {i+1}/{self.count} (size: {self.message_size} bytes)"
+                self.sock.sendall(message_to_send.encode('utf-8'))
+                print(f"{message_info}: {message_to_send[:50]}...")
+                time.sleep(self.delay_ms / 1000)
+            except Exception as e:
+                print(f"Error: {str(e)}")
+                break
+
+        print("Complete the all message sending")
+        self.sock.close()
+
 if __name__ == "__main__":
+    protocol = input("사용할 프로토콜을 선택하세요 (UDP/TCP, 기본값: UDP): ").upper() or 'UDP'
     server_host = input("서버 IP 주소를 입력하세요 (기본값: localhost): ") or 'localhost'
     server_port = int(input("서버 포트 번호를 입력하세요 (기본값: 12345): ") or 12345)
     count_input = int(input("전송할 메시지 갯수를 입력하세요 (1-100, 기본값: 5): ") or 5)
     message_size = int(input("전송할 메시지 크기를 입력하세요 (1-1024(byte), 기본값: 64): ") or 64)
     delay_ms = int(input("전송 간격을 밀리초(ms) 단위로 입력하세요 (기본값: 3ms): ") or 3)
 
-    client = UDPClient(server_host, server_port, message_size, count_input, delay_ms)
+    if protocol == 'TCP':
+        client = TCPClient(server_host, server_port, message_size, count_input, delay_ms)
+    else:
+        client = UDPClient(server_host, server_port, message_size, count_input, delay_ms)
+        
     client.start()

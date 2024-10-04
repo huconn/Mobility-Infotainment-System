@@ -1,0 +1,8 @@
+python-can
+socket
+json
+argparse
+logger
+packet
+pyserial
+requests
